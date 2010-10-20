@@ -216,7 +216,9 @@ if 'setuptools' in sys.modules:
             'ipython-qtconsole = IPython.frontend.qt.console.ipythonqt:main',
             'pycolor = IPython.utils.PyColorize:main',
             'ipcontroller = IPython.kernel.ipcontrollerapp:launch_new_instance',
+            'ipcontrollerz = IPython.zmq.parallel.controller:main',
             'ipengine = IPython.kernel.ipengineapp:launch_new_instance',
+            'ipenginez = IPython.zmq.parallel.engine:main',
             'ipcluster = IPython.kernel.ipclusterapp:launch_new_instance',
             'iptest = IPython.testing.iptest:main',
             'irunner = IPython.lib.irunner:main'
