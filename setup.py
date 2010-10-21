@@ -220,6 +220,7 @@ if 'setuptools' in sys.modules:
             'ipengine = IPython.kernel.ipengineapp:launch_new_instance',
             'ipenginez = IPython.zmq.parallel.engine:main',
             'ipcluster = IPython.kernel.ipclusterapp:launch_new_instance',
+            'ipclusterz = IPython.zmq.parallel.ipcluster:main',
             'iptest = IPython.testing.iptest:main',
             'irunner = IPython.lib.irunner:main'
         ]
