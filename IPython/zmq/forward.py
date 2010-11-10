@@ -83,7 +83,7 @@ class Handler (SocketServer.BaseRequestHandler):
                 self.request.send(data)
         chan.close()
         self.request.close()
-        verbose('Tunnel closed from %r' % (self.request.getpeername(),))
+        verbose('Tunnel closed ')
 
 
 def forward_tunnel(local_port, remote_host, remote_port, transport):
@@ -94,7 +94,7 @@ def forward_tunnel(local_port, remote_host, remote_port, transport):
         chain_host = remote_host
         chain_port = remote_port
         ssh_transport = transport
-    ForwardServer(('', local_port), SubHander).serve_forever()
+    ForwardServer(('127.0.0.1', local_port), SubHander).serve_forever()
 
 
 def verbose(s):
