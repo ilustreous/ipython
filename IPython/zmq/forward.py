@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #
-# This file is adapted from a paramiko demo, and thus LGPL 2.1.
+# This file is adapted from a paramiko demo, and thus licensed under LGPL 2.1.
 # Original Copyright (C) 2003-2007  Robey Pointer <robeypointer@gmail.com>
 # Edits Copyright (C) 2010 The IPython Team
 #

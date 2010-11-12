@@ -1,8 +1,17 @@
+"""Basic ssh tunneling utilities."""
+
+#-----------------------------------------------------------------------------
+#  Copyright (C) 2008-2010  The IPython Development Team
+#
+#  Distributed under the terms of the BSD License.  The full license is in
+#  the file COPYING, distributed as part of this software.
+#-----------------------------------------------------------------------------
 
 
-#-----------------------------------------
+
+#-----------------------------------------------------------------------------
 # Imports
-#-----------------------------------------
+#-----------------------------------------------------------------------------
 
 from __future__ import print_function
 
@@ -24,12 +33,21 @@ except ImportError:
 
 from IPython.zmq.parallel.entry_point import select_random_ports
 
-#----------------------------------------------------
+#-----------------------------------------------------------------------------
 # Code
-#----------------------------------------------------
+#-----------------------------------------------------------------------------
 
-#--------- check for passwordless login ----------
+#-----------------------------------------------------------------------------
+# Check for passwordless login
+#-----------------------------------------------------------------------------
+
 def try_passwordless_ssh(server, keyfile, paramiko=None):
+    """Attempt to make an ssh connection without a password.
+    This is mainly used for requiring password input only once
+    when many tunnels may be connected to the same server.
+    
+    If paramiko is None, the default for the platform is chosen.
+    """
     if paramiko is None:
         paramiko = sys.platform == 'win32'
     if not paramiko:
@@ -39,6 +57,9 @@ def try_passwordless_ssh(server, keyfile, paramiko=None):
     return f(server, keyfile)
 
 def _try_passwordless_openssh(server, keyfile):
+    """Try passwordless login with shell ssh command."""
+    if pexpect is None:
+        raise ImportError("pexpect unavailable, use paramiko")
     cmd = 'ssh -f '+ server
     if keyfile:
         cmd += ' -i ' + keyfile
@@ -55,6 +76,9 @@ def _try_passwordless_openssh(server, keyfile):
             return False
 
 def _try_passwordless_paramiko(server, keyfile):
+    """Try passwordless login with paramiko."""
+    if paramiko is None:
+        raise ImportError("paramiko unavailable, use openssh")
     username, server, port = _split_server(server)
     client = paramiko.SSHClient()
     client.load_system_host_keys()
@@ -70,6 +94,14 @@ def _try_passwordless_paramiko(server, keyfile):
 
 
 def tunnel_connection(socket, addr, server, keyfile=None, password=None, paramiko=None):
+    """Connect a socket to an address via an ssh tunnel.
+    
+    This is a wrapper for socket.connect(addr), when addr is not accessible
+    from the local machine.  It simply creates an ssh tunnel using the remaining args,
+    and calls socket.connect('tcp://localhost:lport') where lport is the randomly
+    selected local port of the tunnel.
+    
+    """
     lport = select_random_ports(1)[0]
     transport, addr = addr.split('://')
     ip,rport = addr.split(':')
@@ -89,6 +121,34 @@ def openssh_tunnel(lport, rport, server, remoteip='127.0.0.1', keyfile=None, pas
     on this machine to localhost:rport on server.  The tunnel
     will automatically close when not in use, remaining open
     for a minimum of timeout seconds for an initial connection.
+    
+    This creates a tunnel redirecting `localhost:lport` to `remoteip:rport`,
+    as seen from `server`.
+    
+    keyfile and password may be specified, but ssh config is checked for defaults.
+    
+    Parameters
+    ----------
+    
+        lport : int
+            local port for connecting to the tunnel from this machine.
+        rport : int
+            port on the remote machine to connect to.
+        server : str
+            The ssh server to connect to. The full ssh server string will be parsed.
+            user@server:port
+        remoteip : str [Default: 127.0.0.1]
+            The remote ip, specifying the destination of the tunnel.
+            Default is localhost, which means that the tunnel would redirect
+            localhost:lport on this machine to localhost:rport on the *server*.
+        
+        keyfile : str; path to public key file
+            This specifies a key to be used in ssh login, default None.
+            Regular default ssh keys will be used without specifying this argument.
+        password : str; 
+            Your ssh password to the ssh server. Note that if this is left None,
+            you will be prompted for it if passwordless key based login is unavailable.
+    
     """
     if pexpect is None:
         raise ImportError("pexpect unavailable, use paramiko_tunnel")
@@ -135,6 +195,34 @@ def _split_server(server):
 def paramiko_tunnel(lport, rport, server, remoteip='127.0.0.1', keyfile=None, password=None, timeout=15):
     """launch a tunner with paramiko in a subprocess. This should only be used
     when shell ssh is unavailable (e.g. Windows).
+    
+    This creates a tunnel redirecting `localhost:lport` to `remoteip:rport`,
+    as seen from `server`.
+    
+    keyfile and password may be specified, but ssh config is checked for defaults.
+    
+    Parameters
+    ----------
+    
+        lport : int
+            local port for connecting to the tunnel from this machine.
+        rport : int
+            port on the remote machine to connect to.
+        server : str
+            The ssh server to connect to. The full ssh server string will be parsed.
+            user@server:port
+        remoteip : str [Default: 127.0.0.1]
+            The remote ip, specifying the destination of the tunnel.
+            Default is localhost, which means that the tunnel would redirect
+            localhost:lport on this machine to localhost:rport on the *server*.
+        
+        keyfile : str; path to public key file
+            This specifies a key to be used in ssh login, default None.
+            Regular default ssh keys will be used without specifying this argument.
+        password : str; 
+            Your ssh password to the ssh server. Note that if this is left None,
+            you will be prompted for it if passwordless key based login is unavailable.
+    
     """
     if paramiko is None:
         raise ImportError("Paramiko not available")
