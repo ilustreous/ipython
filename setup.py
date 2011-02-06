@@ -221,12 +221,13 @@ if 'setuptools' in sys.modules:
             'ipenginez = IPython.zmq.parallel.ipengineapp:launch_new_instance',
             'iploggerz = IPython.zmq.parallel.iploggerapp:launch_new_instance',
             'ipcluster = IPython.kernel.ipclusterapp:launch_new_instance',
-            'ipclusterz = IPython.zmq.parallel.ipcluster:main',
+            'ipclusterz = IPython.zmq.parallel.ipclusterapp:launch_new_instance',
             'iptest = IPython.testing.iptest:main',
             'irunner = IPython.lib.irunner:main'
         ]
     }
     setup_args['extras_require'] = dict(
+        zmq = 'pyzmq>=2.0.10',
         kernel = [
             'zope.interface>=3.4.1',
             'Twisted>=8.0.1',
