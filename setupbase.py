@@ -262,10 +262,15 @@ def find_scripts():
     Find IPython's scripts.
     """
     kernel_scripts = pjoin('IPython','kernel','scripts')
+    zmq_scripts = pjoin('IPython','zmq','parallel','scripts')
     main_scripts = pjoin('IPython','scripts')
     scripts = [pjoin(kernel_scripts, 'ipengine'),
                pjoin(kernel_scripts, 'ipcontroller'),
                pjoin(kernel_scripts, 'ipcluster'),
+               pjoin(zmq_scripts, 'ipenginez'),
+               pjoin(zmq_scripts, 'ipcontrollerz'),
+               pjoin(zmq_scripts, 'ipclusterz'),
+               pjoin(zmq_scripts, 'iploggerz'),
                pjoin(main_scripts, 'ipython'),
                pjoin(main_scripts, 'ipython-qtconsole'),
                pjoin(main_scripts, 'pycolor'),
@@ -301,7 +306,8 @@ def check_for_dependencies():
         check_for_zopeinterface, check_for_twisted,
         check_for_foolscap, check_for_pyopenssl,
         check_for_sphinx, check_for_pygments,
-        check_for_nose, check_for_pexpect
+        check_for_nose, check_for_pexpect,
+        check_for_pyzmq
     )
     print_line()
     print_raw("BUILDING IPYTHON")
@@ -321,6 +327,7 @@ def check_for_dependencies():
     check_for_pygments()
     check_for_nose()
     check_for_pexpect()
+    check_for_pyzmq()
 
 
 def record_commit_info(pkg_dir, build_cmd=build_py):
