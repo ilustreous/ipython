@@ -153,7 +153,7 @@ class Dependency(set):
             all=self.all,
             success_only=self.success_only,
         )
-    
+
 
 __all__ = ['depend', 'require', 'dependent', 'Dependency']
 

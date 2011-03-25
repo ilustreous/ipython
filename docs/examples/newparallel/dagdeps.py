@@ -53,12 +53,12 @@ def make_bintree(levels):
     add_children(G, root, levels, 2)
     return G
 
-def submit_jobs(client, G, jobs):
+def submit_jobs(view, G, jobs):
     """Submit jobs via client where G describes the time dependencies."""
     results = {}
     for node in nx.topological_sort(G):
-        deps = [ results[n] for n in G.predecessors(node) ]
-        results[node] = client.apply(jobs[node], after=deps)
+        view.set_flags(after=[ results[n] for n in G.predecessors(node) ])
+        results[node] = view.apply(jobs[node])
     return results
 
 def validate_tree(G, results):
@@ -88,10 +88,11 @@ def main(nodes, edges):
         jobs[node] = randomwait
     
     client = cmod.Client()
+    view = client.load_balanced_view()
     print "submitting %i tasks with %i dependencies"%(nodes,edges)
-    results = submit_jobs(client, G, jobs)
+    results = submit_jobs(view, G, jobs)
     print "waiting for results"
-    client.barrier()
+    view.wait()
     print "done"
     for node in G:
         md = results[node].metadata

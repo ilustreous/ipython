@@ -36,6 +36,7 @@ class AsyncResult(object):
     msg_ids = None
     _targets = None
     _tracker = None
+    _single_result = False
     
     def __init__(self, client, msg_ids, fname='unknown', targets=None, tracker=None):
         self._client = client
@@ -47,7 +48,10 @@ class AsyncResult(object):
         self._tracker = tracker
         self._ready = False
         self._success = None
-        self._single_result = len(msg_ids) == 1
+        if len(msg_ids) == 1:
+            self._single_result = not isinstance(targets, (list, tuple))
+        else:
+            self._single_result = False
     
     def __repr__(self):
         if self._ready:
@@ -99,7 +103,7 @@ class AsyncResult(object):
         """
         if self._ready:
             return
-        self._ready = self._client.barrier(self.msg_ids, timeout)
+        self._ready = self._client.wait(self.msg_ids, timeout)
         if self._ready:
             try:
                 results = map(self._client.results.get, self.msg_ids)
@@ -285,7 +289,7 @@ class AsyncHubResult(AsyncResult):
         if self._ready:
             return
         local_ids = filter(lambda msg_id: msg_id in self._client.outstanding, self.msg_ids)
-        local_ready = self._client.barrier(local_ids, timeout)
+        local_ready = self._client.wait(local_ids, timeout)
         if local_ready:
             remote_ids = filter(lambda msg_id: msg_id not in self._client.results, self.msg_ids)
             if not remote_ids:

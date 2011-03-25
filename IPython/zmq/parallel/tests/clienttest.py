@@ -14,7 +14,7 @@ from IPython.zmq.parallel import error
 from IPython.zmq.parallel.client import Client
 from IPython.zmq.parallel.ipcluster import launch_process
 from IPython.zmq.parallel.entry_point import select_random_ports
-from IPython.zmq.parallel.tests import processes,add_engine
+from IPython.zmq.parallel.tests import processes,add_engines
 
 # simple tasks for use in apply tests
 
@@ -48,12 +48,14 @@ def skip_without(*names):
     return skip_without_names
 
 
+def setup():
+    add_engines(2)
+
 class ClusterTestCase(BaseZMQTestCase):
     
     def add_engines(self, n=1, block=True):
         """add multiple engines to our cluster"""
-        for i in range(n):
-            self.engines.append(add_engine())
+        self.engines.extend(add_engines(n))
         if block:
             self.wait_on_engines()
     
@@ -68,8 +70,8 @@ class ClusterTestCase(BaseZMQTestCase):
     
     def connect_client(self):
         """connect a client with my Context, and track its sockets for cleanup"""
-        c = Client(profile='iptest',context=self.context)
-        
+        c = Client(profile='iptest', context=self.context)
+        # c._iopub_socket.close()
         # for name in filter(lambda n:n.endswith('socket'), dir(c)):
         #     self.sockets.append(getattr(c, name))
         return c
@@ -92,14 +94,18 @@ class ClusterTestCase(BaseZMQTestCase):
         self.engines=[]
     
     def tearDown(self):
-        
+        self.client.clear(block=True)
         # close fds:
         for e in filter(lambda e: e.poll() is not None, processes):
             processes.remove(e)
         
-        self.client.close()
+        # allow flushing of incoming messages to prevent crash on socket close
+        self.client.wait(timeout=2)
+        time.sleep(0.1)
+        self.client.spin()
+        # self.client.close()
         BaseZMQTestCase.tearDown(self)
-        # this will be superfluous when pyzmq merges PR #88
+        # this will be redundant when pyzmq merges PR #88
         self.context.term()
         # print tempfile.TemporaryFile().fileno(),
         # sys.stdout.flush()

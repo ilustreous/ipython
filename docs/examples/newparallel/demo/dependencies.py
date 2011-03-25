@@ -31,7 +31,7 @@ def getpid2():
     import os
     return os.getpid()
 
-view = client[None]
+view = client.load_balanced_view()
 view.block=True
 
 # will run on anything:
@@ -68,19 +68,20 @@ d5 = Dependency(failures, mode='all', success_only=False) # yes after / no follo
 d6 = Dependency(successes, mode='all', success_only=False) # yes after / no follow
 
 client.block = False
-
-r1a = client.apply(getpid, after=d1a)
-r1b = client.apply(getpid, follow=d1b)
-r2a = client.apply(getpid, after=d2b, follow=d2a)
-r2b = client.apply(getpid, after=d2a, follow=d2b)
-r3 = client.apply(getpid, after=d3)
-r4a = client.apply(getpid, after=d4)
-r4b = client.apply(getpid, follow=d4)
-r4c = client.apply(getpid, after=d3, follow=d4)
-r5 = client.apply(getpid, after=d5)
-r5b = client.apply(getpid, follow=d5, after=d3)
-r6 = client.apply(getpid, follow=d6)
-r6b = client.apply(getpid, after=d6, follow=d2b)
+view = client.load_balanced_view()
+apply = view.apply_with_flags
+r1a = apply(getpid, after=d1a)
+r1b = apply(getpid, follow=d1b)
+r2a = apply(getpid, after=d2b, follow=d2a)
+r2b = apply(getpid, after=d2a, follow=d2b)
+r3 = apply(getpid, after=d3)
+r4a = apply(getpid, after=d4)
+r4b = apply(getpid, follow=d4)
+r4c = apply(getpid, after=d3, follow=d4)
+r5 = apply(getpid, after=d5)
+r5b = apply(getpid, follow=d5, after=d3)
+r6 = apply(getpid, follow=d6)
+r6b = apply(getpid, after=d6, follow=d2b)
 
 def should_fail(f):
     try:

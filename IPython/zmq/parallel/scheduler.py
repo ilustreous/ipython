@@ -238,7 +238,7 @@ class TaskScheduler(SessionFactory):
             msg = self.session.unpack_message(msg, copy=False, content=False)
             parent = msg['header']
             idents = [idents[0],engine]+idents[1:]
-            print (idents)
+            # print (idents)
             try:
                 raise error.EngineError("Engine %r died while running task %r"%(engine, msg_id))
             except:
