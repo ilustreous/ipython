@@ -1,4 +1,4 @@
-.. _parallelmultiengine:
+.. _parallel_multiengine:
 
 ==========================
 IPython's Direct interface

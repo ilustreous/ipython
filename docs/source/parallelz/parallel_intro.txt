@@ -238,7 +238,7 @@ Where 'myhub.example.com' is the url or IP address of the machine on
 which the Hub process is running (or another machine that has direct access to the Hub's ports).
 
 You are now ready to learn more about the :ref:`Direct
-<parallelmultiengine>` and :ref:`LoadBalanced <paralleltask>` interfaces to the
+<parallel_multiengine>` and :ref:`LoadBalanced <parallel_task>` interfaces to the
 controller.
 
 .. [ZeroMQ] ZeroMQ.  http://www.zeromq.org

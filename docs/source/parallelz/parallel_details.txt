@@ -70,6 +70,24 @@ The :attr:`ndarray.flags.writeable` flag will tell you if you can write to an ar
     In [6]: _.flags.writeable
     Out[6]: False
 
+If you want to safely edit an array in-place after *sending* it, you must use the `track=True` flag.  IPython always performs non-copying sends of arrays, which return immediately.  You
+must instruct IPython track those messages *at send time* in order to know for sure that the send has completed.  AsyncResults have a :attr:`sent` property, and :meth:`wait_on_send` method
+for checking and waiting for 0MQ to finish with a buffer.
+
+.. sourcecode:: ipython
+
+    In [5]: A = numpy.random.random((1024,1024))
+    
+    In [6]: view.track=True
+    
+    In [7]: ar = view.apply_async(lambda x: 2*x, A)
+    
+    In [8]: ar.sent
+    Out[8]: False
+    
+    In [9]: ar.wait_on_send() # blocks until sent is True
+
+
 What is sendable?
 -----------------
 
@@ -84,6 +102,61 @@ buffer without copying - and reconstruct the object on the other side in your ow
 possible that the object reconstruction will become extensible, so you can add your own
 non-copying types, but this does not yet exist.
 
+Closures
+********
+
+Just about anything in Python is pickleable. The one notable exception is objects (generally
+functions) with *closures*. Closures can be a complicated topic, but the basic principal is that
+functions that refer to variables in their parent scope have closures.
+
+An example of a function that uses a closure:
+
+.. sourcecode:: python
+
+    def f(a):
+        def inner():
+            # inner will have a closure
+            return a
+        return echo
+    
+    f1 = f(1)
+    f2 = f(2)
+    f1() # returns 1
+    f2() # returns 2
+
+f1 and f2 will have closures referring to the scope in which `inner` was defined, because they
+use the variable 'a'. As a result, you would not be able to send ``f1`` or ``f2`` with IPython.
+Note that you *would* be able to send `f`. This is only true for interactively defined
+functions (as are often used in decorators), and only when there are variables used inside the
+inner function, that are defined in the outer function. If the names are *not* in the outer
+function, then there will not be a closure, and the generated function will look in
+``globals()`` for the name:
+
+.. sourcecode:: python
+
+    def g(b):
+        # note that `b` is not referenced in inner's scope
+        def inner():
+            # this inner will *not* have a closure
+            return a
+        return echo
+    g1 = g(1)
+    g2 = g(2)
+    g1() # raises NameError on 'a'
+    a=5
+    g2() # returns 5
+
+`g1` and `g2` *will* be sendable with IPython, and will treat the engine's namespace as
+globals().  The :meth:`pull` method is implemented based on this principal.  If we did not
+provide pull, you could implement it yourself with `apply`, by simply returning objects out
+of the global namespace:
+
+.. sourcecode:: ipython
+
+    In [10]: view.apply(lambda : a)
+    
+    # is equivalent to
+    In [11]: view.pull('a')
 
 Running Code
 ============

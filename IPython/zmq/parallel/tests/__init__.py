@@ -1,5 +1,16 @@
 """toplevel setup/teardown for parallel tests."""
 
+#-------------------------------------------------------------------------------
+#  Copyright (C) 2011  The IPython Development Team
+#
+#  Distributed under the terms of the BSD License.  The full license is in
+#  the file COPYING, distributed as part of this software.
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+# Imports
+#-------------------------------------------------------------------------------
+
 import tempfile
 import time
 from subprocess import Popen, PIPE, STDOUT
@@ -20,6 +31,7 @@ def setup():
     while not c.ids:
         time.sleep(.1)
         c.spin()
+    c.close()
 
 def add_engines(n=1, profile='iptest'):
     rc = client.Client(profile=profile)
@@ -33,6 +45,7 @@ def add_engines(n=1, profile='iptest'):
     while len(rc) < base+n:
         time.sleep(.1)
         rc.spin()
+    rc.close()
     return eps
 
 def teardown():

@@ -1,3 +1,15 @@
+"""test View objects"""
+#-------------------------------------------------------------------------------
+#  Copyright (C) 2011  The IPython Development Team
+#
+#  Distributed under the terms of the BSD License.  The full license is in
+#  the file COPYING, distributed as part of this software.
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+# Imports
+#-------------------------------------------------------------------------------
+
 import time
 from tempfile import mktemp
 
@@ -7,6 +19,7 @@ from IPython.zmq.parallel import client as clientmod
 from IPython.zmq.parallel import error
 from IPython.zmq.parallel.asyncresult import AsyncResult, AsyncHubResult, AsyncMapResult
 from IPython.zmq.parallel.view import LoadBalancedView, DirectView
+from IPython.zmq.parallel.util import interactive
 
 from IPython.zmq.parallel.tests import add_engines
 
@@ -92,6 +105,7 @@ class TestView(ClusterTestCase):
     
     def test_push_function_globals(self):
         """test that pushed functions have access to globals"""
+        @interactive
         def geta():
             return a
         # self.add_engines(1)
@@ -140,7 +154,7 @@ class TestView(ClusterTestCase):
                 """)
         v = self.client[-1]
         v.run(tmpfile, block=True)
-        self.assertEquals(v.apply_sync(lambda : g()), 5)
+        self.assertEquals(v.apply_sync(lambda f: f(), clientmod.Reference('g')), 5)
 
     def test_apply_tracked(self):
         """test tracking for apply"""
@@ -149,9 +163,10 @@ class TestView(ClusterTestCase):
         v = self.client[t]
         v.block=False
         def echo(n=1024*1024, **kwargs):
-            return v.apply_with_flags(lambda x: x, ('x'*n,), **kwargs)
-        ar = echo(1)
-        self.assertTrue(ar._tracker is None)
+            with v.temp_flags(**kwargs):
+                return v.apply(lambda x: x, 'x'*n)
+        ar = echo(1, track=False)
+        self.assertTrue(isinstance(ar._tracker, zmq.MessageTracker))
         self.assertTrue(ar.sent)
         ar = echo(track=True)
         self.assertTrue(isinstance(ar._tracker, zmq.MessageTracker))
@@ -163,8 +178,8 @@ class TestView(ClusterTestCase):
         t = self.client.ids[-1]
         ns = dict(x='x'*1024*1024)
         v = self.client[t]
-        ar = v.push(ns, block=False)
-        self.assertTrue(ar._tracker is None)
+        ar = v.push(ns, block=False, track=False)
+        self.assertTrue(isinstance(ar._tracker, zmq.MessageTracker))
         self.assertTrue(ar.sent)
         
         ar = v.push(ns, block=False, track=True)
@@ -177,8 +192,8 @@ class TestView(ClusterTestCase):
     def test_scatter_tracked(self):
         t = self.client.ids
         x='x'*1024*1024
-        ar = self.client[t].scatter('x', x, block=False)
-        self.assertTrue(ar._tracker is None)
+        ar = self.client[t].scatter('x', x, block=False, track=False)
+        self.assertTrue(isinstance(ar._tracker, zmq.MessageTracker))
         self.assertTrue(ar.sent)
         
         ar = self.client[t].scatter('x', x, block=False, track=True)
@@ -263,3 +278,10 @@ class TestView(ClusterTestCase):
         self.assertRaises(error.TaskAborted, ar2.get)
         self.assertRaises(error.TaskAborted, ar3.get)
         
+    def test_temp_flags(self):
+        view = self.client[-1]
+        view.block=True
+        with view.temp_flags(block=False):
+            self.assertFalse(view.block)
+        self.assertTrue(view.block)
+    

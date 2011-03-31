@@ -1,4 +1,4 @@
-.. _paralleltask:
+.. _parallel_task:
 
 ==========================
 The IPython task interface
@@ -110,6 +110,8 @@ that turns any Python function into a parallel function:
 
     In [11]: f.map(range(32))    # this is done in parallel
     Out[11]: [0.0,10.0,160.0,...]
+
+.. _parallel_dependencies:
 
 Dependencies
 ============
@@ -231,12 +233,18 @@ any|all
     only after *all* of them have finished.  This is set by a Dependency's :attr:`all`
     boolean attribute, which defaults to ``True``.
 
-success_only
-    Whether to consider only tasks that did not raise an error as being fulfilled.
-    Sometimes you want to run a task after another, but only if that task succeeded.  In
-    this case, ``success_only`` should be ``True``.  However sometimes you may not care
-    whether the task succeeds, and always want the second task to run, in which case
-    you should use `success_only=False`.  The default behavior is to only use successes.
+success [default: True]
+    Whether to consider tasks that succeeded as fulfilling dependencies.
+
+failure [default : False]
+    Whether to consider tasks that failed as fulfilling dependencies.
+    using `failure=True,success=False` is useful for setting up cleanup tasks, to be run
+    only when tasks have failed.
+
+Sometimes you want to run a task after another, but only if that task succeeded. In this case,
+``success`` should be ``True`` and ``failure`` should be ``False``. However sometimes you may
+not care whether the task succeeds, and always want the second task to run, in which case you
+should use `success=failure=True`. The default behavior is to only use successes.
 
 There are other switches for interpretation that are made at the *task* level.  These are
 specified via keyword arguments to the client's :meth:`apply` method.
@@ -259,7 +267,7 @@ timeout
     Dependencies only work within the task scheduler. You cannot instruct a load-balanced
     task to run after a job submitted via the MUX interface.
 
-The simplest form of Dependencies is with `all=True,success_only=True`. In these cases,
+The simplest form of Dependencies is with `all=True,success=True,failure=False`. In these cases,
 you can skip using Dependency objects, and just pass msg_ids or AsyncResult objects as the
 `follow` and `after` keywords to :meth:`client.apply`:
 
@@ -298,8 +306,8 @@ The basic cases that are checked:
 
 * depending on nonexistent messages
 * `follow` dependencies were run on more than one machine and `all=True`
-* any dependencies failed and `all=True,success_only=True`
-* all dependencies failed and `all=False,success_only=True`
+* any dependencies failed and `all=True,success=True,failures=False`
+* all dependencies failed and `all=False,success=True,failure=False`
 
 .. warning::
 

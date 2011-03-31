@@ -69,13 +69,13 @@ class RemoteFunction(object):
         Whether to wait for results or not.  The default behavior is
         to use the current `block` attribute of `view`
     
-    **flags : remaining kwargs are passed to View.apply_with_flags
+    **flags : remaining kwargs are passed to View.temp_flags
     """
     
     view = None # the remote connection
     func = None # the wrapped function
     block = None # whether to block
-    flags = None # dict of extra kwargs for apply_with_flags
+    flags = None # dict of extra kwargs for temp_flags
     
     def __init__(self, view, f, block=None, **flags):
         self.view = view
@@ -85,7 +85,8 @@ class RemoteFunction(object):
     
     def __call__(self, *args, **kwargs):
         block = self.view.block if self.block is None else self.block
-        return self.view.apply_with_flags(self.func, args, kwargs, block=block, **self.flags)
+        with self.view.temp_flags(block=block, **self.flags):
+            return self.view.apply(self.func, *args, **kwargs)
     
 
 class ParallelFunction(RemoteFunction):
@@ -112,7 +113,7 @@ class ParallelFunction(RemoteFunction):
         to use the current `block` attribute of `view`
     chunksize : int or None
         The size of chunk to use when breaking up sequences in a load-balanced manner
-    **flags : remaining kwargs are passed to View.apply_with_flags
+    **flags : remaining kwargs are passed to View.temp_flags
     """
     
     chunksize=None
@@ -168,8 +169,8 @@ class ParallelFunction(RemoteFunction):
                 f=self.func
             
             view = self.view if balanced else client[t]
-                
-            ar = view.apply_with_flags(f, args, block=False, **self.flags)
+            with view.temp_flags(block=False, **self.flags):
+                ar = view.apply(f, *args)
             
             msg_ids.append(ar.msg_ids[0])
         

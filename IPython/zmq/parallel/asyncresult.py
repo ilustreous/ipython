@@ -12,12 +12,17 @@
 
 import time
 
+from zmq import MessageTracker
+
 from IPython.external.decorator import decorator
 from . import error
 
 #-----------------------------------------------------------------------------
 # Classes
 #-----------------------------------------------------------------------------
+
+# global empty tracker that's always done:
+finished_tracker = MessageTracker()
 
 @decorator
 def check_ready(f, self, *args, **kwargs):
@@ -39,9 +44,13 @@ class AsyncResult(object):
     _single_result = False
     
     def __init__(self, client, msg_ids, fname='unknown', targets=None, tracker=None):
-        self._client = client
         if isinstance(msg_ids, basestring):
+            # always a list
             msg_ids = [msg_ids]
+        if tracker is None:
+            # default to always done
+            tracker = finished_tracker
+        self._client = client
         self.msg_ids = msg_ids
         self._fname=fname
         self._targets = targets
@@ -153,10 +162,9 @@ class AsyncResult(object):
         return dict(zip(engine_ids,results))
     
     @property
-    @check_ready
     def result(self):
         """result property wrapper for `get(timeout=0)`."""
-        return self._result
+        return self.get()
     
     # abbreviated alias:
     r = result
@@ -173,7 +181,7 @@ class AsyncResult(object):
     @property
     def result_dict(self):
         """result property as a dict."""
-        return self.get_dict(0)
+        return self.get_dict()
     
     def __dict__(self):
         return self.get_dict(0)
@@ -185,11 +193,17 @@ class AsyncResult(object):
 
     @property
     def sent(self):
-        """check whether my messages have been sent"""
-        if self._tracker is None:
-            return True
-        else:
-            return self._tracker.done
+        """check whether my messages have been sent."""
+        return self._tracker.done
+    
+    def wait_for_send(self, timeout=-1):
+        """wait for pyzmq send to complete.
+        
+        This is necessary when sending arrays that you intend to edit in-place.
+        `timeout` is in seconds, and will raise TimeoutError if it is reached
+        before the send completes.
+        """
+        return self._tracker.wait(timeout)
 
     #-------------------------------------
     # dict-access

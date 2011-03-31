@@ -254,6 +254,7 @@ class Client(HasTraits):
     def __init__(self, url_or_file=None, profile='default', cluster_dir=None, ipython_dir=None,
             context=None, username=None, debug=False, exec_key=None,
             sshserver=None, sshkey=None, password=None, paramiko=None,
+            timeout=10
             ):
         super(Client, self).__init__(debug=debug, profile=profile)
         if context is None:
@@ -324,10 +325,11 @@ class Client(HasTraits):
         
         self._notification_handlers = {'registration_notification' : self._register_engine,
                                     'unregistration_notification' : self._unregister_engine,
+                                    'shutdown_notification' : lambda msg: self.close(),
                                     }
         self._queue_handlers = {'execute_reply' : self._handle_execute_reply,
                                 'apply_reply' : self._handle_apply_reply}
-        self._connect(sshserver, ssh_kwargs)
+        self._connect(sshserver, ssh_kwargs, timeout)
         
     def __del__(self):
         """cleanup sockets, but _not_ context."""
@@ -350,22 +352,6 @@ class Client(HasTraits):
             except ClusterDirError:
                 pass
         self._cd = None
-    
-    @property
-    def ids(self):
-        """Always up-to-date ids property."""
-        self._flush_notifications()
-        # always copy:
-        return list(self._ids)
-        
-    def close(self):
-        if self._closed:
-            return
-        snames = filter(lambda n: n.endswith('socket'), dir(self))
-        for socket in map(lambda name: getattr(self, name), snames):
-            if isinstance(socket, zmq.Socket) and not socket.closed:
-                socket.close()
-        self._closed = True
     
     def _update_engines(self, engines):
         """Update our engines dict and _ids from a dict of the form: {id:uuid}."""
@@ -406,7 +392,7 @@ class Client(HasTraits):
             targets = [targets]
         return [self._engines[t] for t in targets], list(targets)
     
-    def _connect(self, sshserver, ssh_kwargs):
+    def _connect(self, sshserver, ssh_kwargs, timeout):
         """setup all our socket connections to the cluster. This is called from
         __init__."""
         
@@ -423,6 +409,9 @@ class Client(HasTraits):
                 return s.connect(url)
             
         self.session.send(self._query_socket, 'connection_request')
+        r,w,x = zmq.select([self._query_socket],[],[], timeout)
+        if not r:
+            raise error.TimeoutError("Hub connection request timed out")
         idents,msg = self.session.recv(self._query_socket,mode=0)
         if self.debug:
             pprint(msg)
@@ -647,6 +636,11 @@ class Client(HasTraits):
             self.session.recv(self._control_socket)
             self._ignored_control_replies -= 1
     
+    def _flush_ignored_hub_replies(self):
+        msg = self.session.recv(self._query_socket, mode=zmq.NOBLOCK)
+        while msg is not None:
+            msg = self.session.recv(self._query_socket, mode=zmq.NOBLOCK)
+    
     def _flush_iopub(self, sock):
         """Flush replies from the iopub channel waiting
         in the ZMQ queue.
@@ -700,6 +694,22 @@ class Client(HasTraits):
     # Begin public methods
     #--------------------------------------------------------------------------
     
+    @property
+    def ids(self):
+        """Always up-to-date ids property."""
+        self._flush_notifications()
+        # always copy:
+        return list(self._ids)
+        
+    def close(self):
+        if self._closed:
+            return
+        snames = filter(lambda n: n.endswith('socket'), dir(self))
+        for socket in map(lambda name: getattr(self, name), snames):
+            if isinstance(socket, zmq.Socket) and not socket.closed:
+                socket.close()
+        self._closed = True
+    
     def spin(self):
         """Flush any registration notifications and execution results
         waiting in the ZMQ queue.
@@ -714,6 +724,8 @@ class Client(HasTraits):
             self._flush_control(self._control_socket)
         if self._iopub_socket:
             self._flush_iopub(self._iopub_socket)
+        if self._query_socket:
+            self._flush_ignored_hub_replies()
     
     def wait(self, jobs=None, timeout=-1):
         """waits on one or more `jobs`, for up to `timeout` seconds.

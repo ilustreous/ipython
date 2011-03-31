@@ -1,3 +1,16 @@
+"""Tests for parallel client.py"""
+
+#-------------------------------------------------------------------------------
+#  Copyright (C) 2011  The IPython Development Team
+#
+#  Distributed under the terms of the BSD License.  The full license is in
+#  the file COPYING, distributed as part of this software.
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+# Imports
+#-------------------------------------------------------------------------------
+
 import time
 from tempfile import mktemp
 
@@ -75,8 +88,9 @@ class TestClient(ClusterTestCase):
         self.client.clear(targets=id0)
         self.client[:-1].pull('a')
         self.assertRaisesRemote(NameError, self.client[id0].get, 'a')
-        self.client.clear()
+        self.client.clear(block=True)
         for i in self.client.ids:
+            # print i
             self.assertRaisesRemote(NameError, self.client[i].get, 'a')
     
     def test_get_result(self):
@@ -92,6 +106,7 @@ class TestClient(ClusterTestCase):
         self.assertEquals(ahr.get(), ar.get())
         ar2 = self.client.get_result(ar.msg_ids)
         self.assertFalse(isinstance(ar2, AsyncHubResult))
+        c.close()
     
     def test_ids_list(self):
         """test client.ids"""

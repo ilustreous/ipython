@@ -45,7 +45,7 @@ A possible sequence of events for this workflow:
 
 
 Further, taking failures into account, assuming all dependencies are run with the default
-`success_only=True`, the following cases would occur for each node's failure:
+`success=True,failure=False`, the following cases would occur for each node's failure:
 
 0. fails: all other tasks fail as Impossible
 1. 2 can still succeed, but 3,4 are unreachable

@@ -11,6 +11,7 @@
 #-----------------------------------------------------------------------------
 
 import warnings
+from contextlib import contextmanager
 
 import zmq
 
@@ -94,7 +95,7 @@ class View(HasTraits):
     
     """
     block=Bool(False)
-    track=Bool(False)
+    track=Bool(True)
     history=List()
     outstanding = Set()
     results = Dict()
@@ -138,9 +139,8 @@ class View(HasTraits):
     def set_flags(self, **kwargs):
         """set my attribute flags by keyword.
         
-        A View is a wrapper for the Client's apply method, but
-        with attributes that specify keyword arguments, those attributes
-        can be set by keyword argument with this method.
+        Views determine behavior with a few attributes (`block`, `track`, etc.).
+        These attributes can be set all at once by name with this method.
         
         Parameters
         ----------
@@ -158,13 +158,42 @@ class View(HasTraits):
             else:
                 setattr(self, name, value)
     
+    @contextmanager
+    def temp_flags(self, **kwargs):
+        """temporarily set flags, for use in `with` statements.
+        
+        See set_flags for permanent setting of flags
+        
+        Examples
+        --------
+        
+        >>> view.track=False
+        ...
+        >>> with view.temp_flags(track=True):
+        ...    ar = view.apply(dostuff, my_big_array)
+        ...    ar.tracker.wait() # wait for send to finish
+        >>> view.track
+        False
+        
+        """
+        # preflight: save flags, and set temporaries
+        saved_flags = {}
+        for f in self._flag_names:
+            saved_flags[f] = getattr(self, f)
+        self.set_flags(**kwargs)
+        # yield to the with-statement block
+        yield
+        # postflight: restore saved flags
+        self.set_flags(**saved_flags)
+        
+        
     #----------------------------------------------------------------
     # apply
     #----------------------------------------------------------------
     
     @sync_results
     @save_ids
-    def apply_with_flags(self, f, args, kwargs, block=None, **options):
+    def _really_apply(self, f, args, kwargs, block=None, **options):
         """wrapper for client.send_apply_message"""
         raise NotImplementedError("Implement in subclasses")
     
@@ -178,14 +207,14 @@ class View(HasTraits):
         else:
             returns actual result of f(*args, **kwargs)
         """
-        return self.apply_with_flags(f, args, kwargs)
+        return self._really_apply(f, args, kwargs)
 
     def apply_async(self, f, *args, **kwargs):
         """calls f(*args, **kwargs) on remote engines in a nonblocking manner.
         
         returns AsyncResult
         """
-        return self.apply_with_flags(f, args, kwargs, block=False)
+        return self._really_apply(f, args, kwargs, block=False)
 
     @spin_after
     def apply_sync(self, f, *args, **kwargs):
@@ -194,7 +223,7 @@ class View(HasTraits):
         
         returns: actual result of f(*args, **kwargs)
         """
-        return self.apply_with_flags(f, args, kwargs, block=True)
+        return self._really_apply(f, args, kwargs, block=True)
 
     #----------------------------------------------------------------
     # wrappers for client and control methods
@@ -352,7 +381,7 @@ class DirectView(View):
     
     @sync_results
     @save_ids
-    def apply_with_flags(self, f, args=None, kwargs=None, block=None, track=None):
+    def _really_apply(self, f, args=None, kwargs=None, block=None, track=None):
         """calls f(*args, **kwargs) on remote engines, returning the result.
         
         This method sets all of `apply`'s flags via this View's attributes.
@@ -459,7 +488,7 @@ class DirectView(View):
                 whether or not to wait until done to return
                 default: self.block
         """
-        return self.apply_with_flags(util._execute, args=(code,), block=block)
+        return self._really_apply(util._execute, args=(code,), block=block)
     
     def run(self, filename, block=None):
         """Execute contents of `filename` on my engine(s). 
@@ -510,7 +539,7 @@ class DirectView(View):
         # applier = self.apply_sync if block else self.apply_async
         if not isinstance(ns, dict):
             raise TypeError("Must be a dict, not %s"%type(ns))
-        return self.apply_with_flags(util._push, (ns,),block=block, track=track)
+        return self._really_apply(util._push, (ns,),block=block, track=track)
 
     def get(self, key_s):
         """get object(s) by `key_s` from remote namespace
@@ -747,7 +776,7 @@ class LoadBalancedView(View):
                     raise ValueError("Invalid dependency: %r"%value)
         if 'timeout' in kwargs:
             t = kwargs['timeout']
-            if not isinstance(t, (int, long, float, None)):
+            if not isinstance(t, (int, long, float, type(None))):
                 raise TypeError("Invalid type for timeout: %r"%type(t))
             if t is not None:
                 if t < 0:
@@ -756,7 +785,7 @@ class LoadBalancedView(View):
     
     @sync_results
     @save_ids
-    def apply_with_flags(self, f, args=None, kwargs=None, block=None, track=None,
+    def _really_apply(self, f, args=None, kwargs=None, block=None, track=None,
                                         after=None, follow=None, timeout=None):
         """calls f(*args, **kwargs) on a remote engine, returning the result.
         

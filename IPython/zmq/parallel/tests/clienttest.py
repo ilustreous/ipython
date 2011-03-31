@@ -1,3 +1,12 @@
+"""base class for parallel client tests"""
+
+#-------------------------------------------------------------------------------
+#  Copyright (C) 2011  The IPython Development Team
+#
+#  Distributed under the terms of the BSD License.  The full license is in
+#  the file COPYING, distributed as part of this software.
+#-------------------------------------------------------------------------------
+
 import sys
 import tempfile
 import time
@@ -6,6 +15,7 @@ from multiprocessing import Process
 
 from nose import SkipTest
 
+import zmq
 from zmq.tests import BaseZMQTestCase
 
 from IPython.external.decorator import decorator
@@ -47,10 +57,6 @@ def skip_without(*names):
         return f(*args, **kwargs)
     return skip_without_names
 
-
-def setup():
-    add_engines(2)
-
 class ClusterTestCase(BaseZMQTestCase):
     
     def add_engines(self, n=1, block=True):
@@ -71,9 +77,10 @@ class ClusterTestCase(BaseZMQTestCase):
     def connect_client(self):
         """connect a client with my Context, and track its sockets for cleanup"""
         c = Client(profile='iptest', context=self.context)
-        # c._iopub_socket.close()
-        # for name in filter(lambda n:n.endswith('socket'), dir(c)):
-        #     self.sockets.append(getattr(c, name))
+        for name in filter(lambda n:n.endswith('socket'), dir(c)):
+            s = getattr(c, name)
+            s.setsockopt(zmq.LINGER, 0)
+            self.sockets.append(s)
         return c
     
     def assertRaisesRemote(self, etype, f, *args, **kwargs):
@@ -94,19 +101,19 @@ class ClusterTestCase(BaseZMQTestCase):
         self.engines=[]
     
     def tearDown(self):
-        self.client.clear(block=True)
+        # self.client.clear(block=True)
         # close fds:
         for e in filter(lambda e: e.poll() is not None, processes):
             processes.remove(e)
         
         # allow flushing of incoming messages to prevent crash on socket close
         self.client.wait(timeout=2)
-        time.sleep(0.1)
+        # time.sleep(2)
         self.client.spin()
-        # self.client.close()
+        self.client.close()
         BaseZMQTestCase.tearDown(self)
         # this will be redundant when pyzmq merges PR #88
-        self.context.term()
+        # self.context.term()
         # print tempfile.TemporaryFile().fileno(),
         # sys.stdout.flush()
         

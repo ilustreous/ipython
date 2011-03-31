@@ -357,9 +357,12 @@ class Kernel(SessionFactory):
         
         reply_msg = self.session.send(stream, u'apply_reply', reply_content, 
                     parent=parent, ident=ident,buffers=result_buf, subheader=sub)
-
-        # if reply_msg['content']['status'] == u'error':
-        #     self.abort_queues()
+        
+        # flush i/o
+        # should this be before reply_msg is sent, like in the single-kernel code, 
+        # or should nothing get in the way of real results?
+        sys.stdout.flush()
+        sys.stderr.flush()
     
     def dispatch_queue(self, stream, msg):
         self.control_stream.flush()
