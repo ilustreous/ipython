@@ -43,7 +43,7 @@ The following will fail:
     ...
     RemoteError: RuntimeError(array is not writeable)
     Traceback (most recent call last):
-      File "/Users/minrk/dev/ip/mine/IPython/zmq/parallel/streamkernel.py", line 329, in apply_request
+      File "/path/to/site-packages/IPython/parallel/streamkernel.py", line 329, in apply_request
         exec code in working, working
       File "<string>", line 1, in <module>
       File "<ipython-input-14-736187483856>", line 2, in setter
@@ -243,7 +243,7 @@ does something very similar to ``execute(open(f).read())``.
 Views
 =====
 
-The principal extension of the :class:`~parallel.client.Client` is the
+The principal extension of the :class:`~parallel.Client` is the
 :class:`~parallel.view.View` class. The client
 
 Two of apply's keyword arguments are set at the construction of the View, and are immutable for

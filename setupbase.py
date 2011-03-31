@@ -132,8 +132,8 @@ def find_packages():
     add_package(packages, 'testing.plugin', tests=False)
     add_package(packages, 'utils', tests=True)
     add_package(packages, 'zmq')
-    add_package(packages, 'zmq.parallel')
     add_package(packages, 'zmq.pylab')
+    add_package(packages, 'parallel')
     return packages
 
 #---------------------------------------------------------------------------
@@ -262,15 +262,15 @@ def find_scripts():
     Find IPython's scripts.
     """
     kernel_scripts = pjoin('IPython','kernel','scripts')
-    zmq_scripts = pjoin('IPython','zmq','parallel','scripts')
+    parallel_scripts = pjoin('IPython','parallel','scripts')
     main_scripts = pjoin('IPython','scripts')
     scripts = [pjoin(kernel_scripts, 'ipengine'),
                pjoin(kernel_scripts, 'ipcontroller'),
                pjoin(kernel_scripts, 'ipcluster'),
-               pjoin(zmq_scripts, 'ipenginez'),
-               pjoin(zmq_scripts, 'ipcontrollerz'),
-               pjoin(zmq_scripts, 'ipclusterz'),
-               pjoin(zmq_scripts, 'iploggerz'),
+               pjoin(parallel_scripts, 'ipenginez'),
+               pjoin(parallel_scripts, 'ipcontrollerz'),
+               pjoin(parallel_scripts, 'ipclusterz'),
+               pjoin(parallel_scripts, 'iploggerz'),
                pjoin(main_scripts, 'ipython'),
                pjoin(main_scripts, 'ipython-qtconsole'),
                pjoin(main_scripts, 'pycolor'),
